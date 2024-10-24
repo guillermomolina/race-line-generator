@@ -363,10 +363,12 @@ def improve_race_line(old_line, inner_border, outer_border):
     return new_line
 
 
-altafulla_track = load_track('tracks/Karting Altafulla.kml')
-inner_side = np.array(altafulla_track['track']['inner'])
-outer_side = np.array(altafulla_track['track']['outer'])
-base_side = np.array(altafulla_track['base'])
+# track_name = "Karting Altafulla"
+track_name = "Karting Vendrell"
+track = load_track(f'tracks/{track_name}.kml')
+inner_side = np.array(track['track']['inner'])
+outer_side = np.array(track['track']['outer'])
+base_side = np.array(track['base'])
 # add_plot(inner_side)
 # add_plot(outer_side)
 # add_plot(base_side)
@@ -382,8 +384,8 @@ middle_line = (resampled_outer + nearest_inner_points) / 2
 inner_border = nearest_inner_points
 outer_border = resampled_outer
 
-save_track('tracks/Karting Altafulla Sane.kml', altafulla_track['name'], 
-           altafulla_track['center'], inner_border, outer_border, 
+save_track(f'tracks/{track_name} Sane.kml', track['name'], 
+           track['center'], inner_border, outer_border, 
            middle_line, None, base_line)
 
 # Number of times to scan the entire race track to iterate
@@ -409,8 +411,8 @@ add_plot(loop_race_line)
 plt.show()
 
 
-save_track('tracks/Karting Altafulla Race Line.kml', altafulla_track['name'], 
-           altafulla_track['center'], inner_border, outer_border, 
+save_track(f'tracks/{track_name} Race Line.kml', track['name'], 
+           track['center'], inner_border, outer_border, 
            middle_line, loop_race_line, base_line)
 
 pass
