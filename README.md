@@ -1,6 +1,6 @@
 # Race Line Calculator
 
-Algorithma copied from:
+Algorithm copied from:
 
 https://github.com/cdthompson/deepracer-k1999-race-lines.git
 

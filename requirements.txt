@@ -1,0 +1,7 @@
+PyQt6
+geopy
+numpy
+matplotlib
+scipy
+shapely
+pandas
