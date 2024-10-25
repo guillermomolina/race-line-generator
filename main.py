@@ -82,12 +82,12 @@ def load_track(file_path):
 
     for placemark in document.iter(f'{namespace}Placemark'):
         name = placemark.find(f'{namespace}name').text
-        polygon = placemark.find(f'{namespace}Polygon')
-        if polygon is not None:
+        line_string = placemark.find(f'{namespace}Polygon')
+        if line_string is not None:
             track[name] = {}
             for line_name in ['inner', 'outer']:
                 points = []
-                boundary_is = polygon.find(f'{namespace}{line_name}BoundaryIs')
+                boundary_is = line_string.find(f'{namespace}{line_name}BoundaryIs')
                 linear_ring = boundary_is.find(f'{namespace}LinearRing')
                 coordinates = linear_ring.find(f'{namespace}coordinates')
                 for line in coordinates.text.split('\n'):
@@ -101,6 +101,24 @@ def load_track(file_path):
                         points.append([x, y])
                 points.append(points[0])
                 track[name][line_name] = points
+
+    for placemark in document.iter(f'{namespace}Placemark'):
+        name = placemark.find(f'{namespace}name').text
+        line_string = placemark.find(f'{namespace}LineString')
+        if line_string is not None:
+            coordinates = line_string.find(f'{namespace}coordinates')
+            points = []
+            for line in coordinates.text.split('\n'):
+                line = line.strip()
+                coordinate_lst = line.split(',')
+                if line != '' and len(coordinate_lst) == 3:
+                    lon = float(coordinate_lst[0])
+                    lat = float(coordinate_lst[1])
+                    alt = float(coordinate_lst[2])
+                    y, x = latlon_to_meters(lat, lon, track_center_lat, track_center_lon)
+                    points.append([x, y])
+            points.append(points[0])
+            track[name] = points
     return track
 
 def save_point(file, name, point):
@@ -159,7 +177,7 @@ def save_line(file, center, name, line):
     file.write('      </LineString>\n')
     file.write('    </Placemark>\n')
 
-def save_track(file_path, name, center, inside, outside, middle, race):
+def save_track(file_path, name, center, inside, outside, middle, race, base):
     with open(file_path, 'wt') as file:
         file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         file.write('<kml xmlns="http://www.opengis.net/kml/2.2">\n')
@@ -171,6 +189,8 @@ def save_track(file_path, name, center, inside, outside, middle, race):
             save_line(file, center, 'middle', middle)
         if race is not None:
             save_line(file, center, 'race', race)
+        if base is not None:
+            save_line(file, center, 'base', base)
         file.write('  </Document>\n')
         file.write('</kml>\n')
 
@@ -343,15 +363,20 @@ def improve_race_line(old_line, inner_border, outer_border):
     return new_line
 
 
-altafulla_track = load_track('tracks/Karting Altafulla.kml')
-inner_side = np.array(altafulla_track['track']['inner'])
-outer_side = np.array(altafulla_track['track']['outer'])
+# track_name = "Karting Altafulla"
+track_name = "Karting Vendrell"
+track = load_track(f'tracks/{track_name}.kml')
+inner_side = np.array(track['track']['inner'])
+outer_side = np.array(track['track']['outer'])
+base_side = np.array(track['base'])
 # add_plot(inner_side)
 # add_plot(outer_side)
+# add_plot(base_side)
 
-num_samples = 200
+num_samples = 300
 resampled_outer = resample_track(outer_side, num_samples)
 resampled_inner = resample_track(inner_side, num_samples)
+base_line = resample_track(base_side, num_samples)
 
 nearest_inner_points, distances = find_nearest_points(resampled_outer, resampled_inner)
 
@@ -359,36 +384,36 @@ middle_line = (resampled_outer + nearest_inner_points) / 2
 inner_border = nearest_inner_points
 outer_border = resampled_outer
 
-save_track('tracks/Karting Altafulla Sane.kml', altafulla_track['name'], 
-           altafulla_track['center'], inner_border, outer_border, 
-           middle_line, None)
+save_track(f'tracks/{track_name} Sane.kml', track['name'], 
+           track['center'], inner_border, outer_border, 
+           middle_line, None, base_line)
 
 # Number of times to scan the entire race track to iterate
 # 500 will get a good start, 1500 will be closer to optimal result
-LINE_ITERATIONS=100
+LINE_ITERATIONS=400
 
-print(len(middle_line))
+print(len(base_line))
 # start along centerline of track
-race_line = copy.deepcopy(middle_line[:-1])  # Use this for centerline being outer bound
+race_line = copy.deepcopy(base_line[:-1])  # Use this for centerline being outer bound
 for i in range(LINE_ITERATIONS):
     race_line = improve_race_line(race_line, inner_border, outer_border)
     if i % 20 == 0: print("Iteration %d" % i)
-
 
 # need to put duplicate point race_line[0] at race_line[-1] to make a closed loops
 loop_race_line = np.append(race_line, [race_line[0]], axis=0)
 
 
-
 add_plot(nearest_inner_points)
 add_plot(resampled_outer)
-add_plot(middle_line)
+# add_plot(middle_line)
+add_plot(base_line)
 add_plot(loop_race_line)
-
-
-save_track('tracks/Karting Altafulla Race Line.kml', altafulla_track['name'], 
-           altafulla_track['center'], inner_border, outer_border, 
-           middle_line, loop_race_line)
-
 plt.show()
+
+
+save_track(f'tracks/{track_name} Race Line.kml', track['name'], 
+           track['center'], inner_border, outer_border, 
+           middle_line, loop_race_line, base_line)
+
 pass
+
